@@ -1,0 +1,184 @@
+---
+title: "A script to test for order and parameters for each filter "
+output: html_document
+---
+
+## Read in parameter if use
+```{r}
+# setwd("/flush1/ngu121/Unified_ENHANCERS/FinalConcensusEnhancers/FINAL_88Tis5dat_ExactMuli080/CombinedMatrixFilter/")
+setwd("/datastore/ngu121/HPRSforPig/CombineMatrix/")
+path<-'/datastore/ngu121/HPRSforPig/CombineMatrix/'
+name1_Meta <-'susScr3_7filter_metadata_forFiltering.bed'
+name2_VillarEn <-'susScr-H3K27Ac_NOToverlapH3K4.bed'
+name3_VillarPro <- 'susScr-H3K4me3_replicated-peaks_macs.4bed'
+#Index of regions containing Villar Promoter and Enhancer ref
+
+name4_VillarIndex <-'Merged_88Tis5datsuScr3IDs_cbVillarPromoterEnhancer.bed' #this is intersect of predicted regulatory regions with the combined reference Villar promoters and enhancers
+name5_VillarEnhIndex <-'Merged_88Tis5datsuScr3IDs_OverlapVillarEnh.bed' #this is intersect of predicted regulatory regions with reference Villar enhancers
+
+datforFilter <-read.table(paste0(path,name1_Meta),sep="\t", header=T ) #main table input for the filter
+totalEnh <-length(readLines(paste0(path,name2_VillarEn))) #get total number Villar reference enhancer
+totalPro <-length(readLines(paste0(path,name3_VillarPro))) #get total number Villar reference promoter
+villarIndexPromEnhDat <-read.table(paste0(path,name4_VillarIndex), sep="\t") #reference table for enhancer and promoter
+villarIndexEnhDat <-read.table(paste0(path,name5_VillarEnhIndex), sep="\t") #reference table for enhancer only
+
+```
+
+#Calculate baseline
+```{r}
+
+#Unit length = Mb
+lengthUniversal <-sum(datforFilter$End-datforFilter$Start+1)/1e6 
+basePromUniversal <-totalPro/lengthUniversal 
+baseEnhUniversal <-totalEnh/lengthUniversal 
+basePromGenome <-totalPro/2808.5
+baseEnhGenome <-totalEnh/2808.5 
+
+SummarybaselineU <-list(c("enh_Unfilteredbaseline", baseEnhUniversal),c("prom_Unfilteredbaseline", basePromUniversal),
+                        c("enh_Genomebaseline", baseEnhGenome),c("prom_Genomebaseline", basePromGenome))
+
+villarIndexAll <-which(datforFilter$IDs%in%villarIndexPromEnhDat$V4)
+villarIndexEnh <-which(datforFilter$IDs%in%villarIndexEnhDat$V4)
+
+RegOverlapVillar <-datforFilter[villarIndexAll,]
+RegOverlapVillarEnh <-datforFilter[villarIndexEnh,]
+
+```
+
+## Universal function to calculate coverage after each filter
+```{r}
+bedtools_sv <-function(stringcmd="bedtools intersect", bed1){
+  #create temp file
+  a.file=tempfile()
+  out1=tempfile()
+  out2=tempfile()
+  #write into bedformat
+  write.table(bed1, a.file,col.names = F, quote=F, row.names=F, sep="\t")
+  #create command
+  cmdEnh <-paste(stringcmd, "-b", a.file, "-a",paste0(path,name2_VillarEn), "-u", ">", out1)
+  cmdProm <-paste(stringcmd, "-b", a.file, "-a",paste0(path,name3_VillarPro), "-u", ">", out2)
+  #run command
+  cat(cmdEnh, "\n"); cat(cmdProm, "\n")
+  system(cmdEnh); system(cmdProm)
+  #readTable and find overlap
+  Enh <-read.table(out1, header=F); Prom <-read.table(out2, header=F)
+  totalMB <-sum(bed1$End -bed1$Start +1)/1e6
+  RatioE <-dim(Enh)[1]/totalMB; RatioP <-dim(Prom)[1]/totalMB
+  OutputSummary <-c("Enh", dim(Enh)[1], RatioE, "Prom", dim(Prom)[1],RatioP, "LengthMB", totalMB)
+  unlink(a.file); unlink(out1); unlink(out2)
+  return(OutputSummary)
+}
+```
+
+####Testing filter parameters starts from here####
+
+##1. CAGE## The code will calculate and print out RatioP and RatioE
+```{r}
+Regulatory_FtCAGE <-subset(datforFilter, CAGEcount >1)
+#CAGE=1 and had RNAseq signal
+Regulatory_FtCAGE_1 <-subset(datforFilter,  CAGEcount ==1)
+
+Regulatory_FtCAGE_1 <-subset(Regulatory_FtCAGE_1,  log2(MaxRNAseq) >= summary(log2(RegOverlapVillar$MaxRNAseq[RegOverlapVillar$MaxRNAseq>0]))[4])
+Regulatory_FtCAGE <-rbind(Regulatory_FtCAGE, Regulatory_FtCAGE_1)
+datCAGE <-Regulatory_FtCAGE
+
+#test  CAGEcount ==1 as the only condition
+# datCAGE <-subset(datforFilter,  CAGEcount >= 1)
+
+bed1 <-datCAGE[,c(2,3,4,1)]
+OutputSummaryCAGE<-bedtools_sv("bedtools intersect", bed1)
+OutputSummaryCAGE; SummarybaselineU; dim(Regulatory_FtCAGE); dim(datforFilter)
+```
+
+##2. H3K27Ac##
+
+```{r}
+Filter_H3K27Ac <-subset(datforFilter[datforFilter$MeanH3K27Ac >0,],
+                                              log2(MeanH3K27Ac) >=
+summary(log2(RegOverlapVillarEnh[RegOverlapVillarEnh$MeanH3K27Ac>0,]$MeanH3K27Ac))[4])
+
+datH3K27Ac <-Filter_H3K27Ac
+bed1 <-datH3K27Ac[,c(2,3,4,1)]
+OutputSummaryH3K27Ac<-bedtools_sv("bedtools intersect", bed1)                      
+OutputSummaryH3K27Ac; SummarybaselineU 
+dim(Filter_H3K27Ac)
+
+```
+
+##3. SVM##
+```{r}
+#a predicted enhancer has positive score, and score high than a cutoff to be an enhancer
+
+datSVM <-subset(na.omit(datforFilter), Length <5000 & SVM>=summary(na.omit(RegOverlapVillarEnh)$SVM)[4]) 
+
+bed1 <-datSVM[,c(2,3,4,1)] 
+
+OutputSummarySVM<-bedtools_sv("bedtools intersect", bed1) 
+
+OutputSummarySVM; SummarybaselineU; 
+
+```
+
+##4. RNAseq##
+```{r}
+
+t <-datforFilter[datforFilter$MaxRNAseq>0,]
+
+Filter_RNAseq<-subset(t,log2(t$MaxRNAseq) >= summary(log2(RegOverlapVillar$MaxRNAseq[RegOverlapVillar$MaxRNAseq>0]))[3])
+
+bed1 <-Filter_RNAseq[,c(2,3,4,1)]
+
+OutputSummaryRNAseq<-bedtools_sv("bedtools intersect", bed1)                      
+OutputSummaryRNAseq; SummarybaselineU; 
+```
+
+##5. Annotation per bp##
+```{r}
+
+Filter_Ann <-subset(datforFilter , AnnotationCount >= summary(RegOverlapVillar$AnnotationCount)[3]) 
+
+bed1 <-Filter_Ann [,c(2,3,4,1)] 
+OutputSummaryAnn<-bedtools_sv("bedtools intersect", bed1)                      
+
+OutputSummaryAnn; SummarybaselineU;  
+```
+
+##6. PhastCons##                                       
+```{r}
+tt<-datforFilter
+
+t <-as.numeric(as.vector(RegOverlapVillar$phastCons))
+
+tt$phastCons <-as.numeric(as.vector(tt$phastCons))
+
+Filter_PhastCons <-subset(tt, na.omit(tt$phastCons) >= quantile(na.omit(t),c(.50))) 
+Filter_PhastCons <-subset(tt, na.omit(tt$phastCons) >= quantile(mean(na.omit(t)))) 
+bed1 <-Filter_PhastCons[,c(2,3,4,1)] 
+
+OutputSummaryPhastCons<-bedtools_sv("bedtools intersect", bed1)                      
+
+OutputSummaryPhastCons; SummarybaselineU
+
+```
+##7. TFBS##
+```{r}
+# Regulatory_RmCAGE_rmRNAseq_rmH3K27Ac_rmSVM_rmAnn[Regulatory_RmCAGE_rmRNAseq_rmH3K27Ac_rmSVM_rmAnn$IDs=="88Tis5dat3Type_ID268243",]
+Filter_TFBS<-subset(datforFilter,TFBSCount>= summary(RegOverlapVillar$TFBSCount)[3]) 
+
+bed1 <-Filter_TFBS[,c(2,3,4,1)]
+OutputSummaryTFBS<-bedtools_sv("bedtools intersect", bed1)                      
+OutputSummaryTFBS; SummarybaselineU 
+
+```
+
+
+
+
+
+
+
+
+
+
+
+

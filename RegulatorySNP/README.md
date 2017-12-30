@@ -1,0 +1,6 @@
+# This is the final step after mapping and filtering. It is used for predicting regulatory SNPs, mainly focusing on SNPs outside coding regions.
+
+- The gkmSVM model (by Dongwon et al., 2015, Nature Genetics: http://www.nature.com/ng/journal/v47/n8/full/ng.3331.html) has been shown useful for predicting enhancer activities and SNP regulatory effects in Human. We developed an implementation pipeline for applying gkmSVM to cattle and pig, which requires some adjustments of the original gkmSVM pipeline in humans, because the cattle/pig data available for model training is very limited. We used H3K27Ac data in liver for 4 cattle or 3 pigs.
+- The key step for gkmSVM model is to prepare training sets. Scripts for this can be found in the Implementing_gkmSVM folder.
+- After training the gkmSVM model, score matrices are generated and can be used for estimating deltaSVM scores for all possible SNPs in cattle genome (~97 million). deltaSVM scores is estimation of potential SNP effects on regulatory activities.The script for estimating deltaSVM scores of all SNPs can be found in the ScoringSNPs folder. 
+- The score matrices can also be used to estimate gkmSVM scores of the predicted enhancers and promoters from HPRS mapping step. The gkmSVM scores are used as one of the 7 filters in the Filter pipeline. 

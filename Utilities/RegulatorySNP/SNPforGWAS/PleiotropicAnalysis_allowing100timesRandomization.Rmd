@@ -1,0 +1,160 @@
+---
+title: "Testing Enrichment of Regulatory SNPs in Pleiotropic Dataset 100 Iterations"
+output: html_document
+---
+
+# 1. Figure significant pleiotropic count different functional categories genomic regions (100 iterations)
+```{r}
+
+require(stringi)
+setwd("//pearceyflush1.csiro.au/flush1/ngu121/PleiotropicSNPs/")
+
+#prepare metadata pleiotropic table with SNP coordinates
+PleiAllDat <-read.table("MULTITRAIT_stat_NoX.txt", sep=" ", header=F)
+HDchipCoor <-read.table("BovineHD_B_AlleleReport_ALL_SNPcoordinate.4bed", sep="\t", header=F)
+PleiAllDatCoord <-merge(PleiAllDat, HDchipCoor, by.x="V1", by.y="V4", sort=F)
+colnames(PleiAllDatCoord) <-c("SNPid", "Scores", "pleo_P", "Chr", "start", "end")
+PleiAllDat_qqman <-PleiAllDatCoord[,c(1,4,5,3)] 
+#Read in the total SNPs within 
+PleiAll_100kbWindow <-read.table("All_MULTITRAIT_stat_NoX_100Kb_Upstream.bed", sep="\t", header=F)
+PleiAll_5kbWindow <-read.table("All_MULTITRAIT_stat_NoX_5Kb_Upstream.bed", sep="\t", header=F)
+PleiAll_withinGenes <-read.table("All_MULTITRAIT_stat_NoX_WithinGenes.bed", sep="\t", header=F)
+PleiAll_withinExon <-read.table("All_MULTITRAIT_stat_NoX_WithinExon.bed",sep="\t", header=F )
+ReguSNP_All <-read.table("Regulatory_47657SNP.bed", sep="\t", header=F)
+#ReguSNP_All <-read.table("datMERGE_ALLSelectedRegions_SORTEDbedtoolMERGED_OverlapIlluminaHDchip.4bedt", sep="\t", header=F)
+
+PleiAllDat_ReguSNP <-PleiAllDat_qqman[which(PleiAllDat_qqman$SNP %in% ReguSNP_All$V4),]
+
+dim(PleiAll_100kbWindow);dim(PleiAll_5kbWindow);  dim(PleiAll_withinGenes); dim(PleiAll_withinExon);dim(ReguSNP_All);dim(PleiAllDat_ReguSNP)
+
+idx5kb <-which(PleiAllDat_qqman$SNP%in%PleiAll_5kbWindow$V4)
+PleiAllDat_random5kb <-PleiAllDat_qqman[idx5kb, ]
+  
+idxwithinExons <-which(PleiAllDat_qqman$SNP%in%PleiAll_withinExon$V4)
+PleiAllDat_withinExons <-PleiAllDat_qqman[idxwithinExons, ]
+
+RegLength <-length(PleiAllDat_ReguSNP$SNP)
+
+# Randomization 
+randomFunc <-function(PleiAllDat_qqman,PleiAll_100kbWindow,PleiAll_withinGenes,PleiAllDat_random5kb,PleiAllDat_withinExons,PleiAllDat_ReguSNP){
+  ID_Random <-sample(PleiAllDat_qqman$SNP, size=RegLength, replace=F )
+  idx <-which(PleiAllDat_qqman$SNP%in%ID_Random )
+  PleiAllDat_random <-PleiAllDat_qqman[idx, ]
+  
+  ID_Random100Kb <-sample(PleiAll_100kbWindow$V4, size=RegLength, replace=F )
+  idx100Kb <-which(PleiAllDat_qqman$SNP%in%ID_Random100Kb)
+  PleiAllDat_random100Kb <-PleiAllDat_qqman[idx100Kb, ]
+  
+  ID_RandomwithinGenes<-sample(PleiAll_withinGenes$V4, size=RegLength , replace=F )
+  idxwithinGenes <-which(PleiAllDat_qqman$SNP%in%ID_RandomwithinGenes)
+  PleiAllDat_randomwithinGenes <-PleiAllDat_qqman[idxwithinGenes, ]
+  
+  vecRandom <-c(rep(NA,20))
+  vecRandom5kb <-c(rep(NA,20))
+  vecRandom100Kb <-c(rep(NA,20))
+  vecRandomwithinGenes <-c(rep(NA,20))
+  vecWithinExons <-c(rep(NA,20))
+  vecRegu <-c(rep(NA,20))
+  
+  for (i in 3:20){
+  vecRandom[i] <- dim(PleiAllDat_random[PleiAllDat_random$pleo_P < 10^-(i),])[1]
+  vecRandom100Kb[i] <- dim(PleiAllDat_random100Kb[PleiAllDat_random100Kb$pleo_P < 10^-(i),])[1]
+  vecRandom5kb[i] <- dim(PleiAllDat_random5kb[PleiAllDat_random5kb$pleo_P < 10^-(i),])[1]
+  vecRandomwithinGenes[i] <- dim(PleiAllDat_randomwithinGenes[PleiAllDat_randomwithinGenes$pleo_P < 10^-(i),])[1]
+  vecWithinExons[i] <- dim(PleiAllDat_withinExons[PleiAllDat_withinExons$pleo_P < 10^-(i),])[1]
+  vecRegu[i] <- dim(PleiAllDat_ReguSNP[PleiAllDat_ReguSNP$pleo_P < 10^-(i),])[1]
+  }
+  
+  #combine counts 
+  combined_PleiSNPs_Random <-data.frame("logP"=c(seq(from=3, to=20)))
+  combined_PleiSNPs_Random$RandomHD5kb <-na.omit(vecRandom5kb)
+  combined_PleiSNPs_Random$RandomHD5kb <-combined_PleiSNPs_Random$RandomHD5kb*43130/30384
+  combined_PleiSNPs_Random$RandomHD100Kb <-na.omit(vecRandom100Kb)
+  combined_PleiSNPs_Random$withinGenes <-na.omit(vecRandomwithinGenes)
+  combined_PleiSNPs_Random$withinExon <-na.omit(vecWithinExons)
+  combined_PleiSNPs_Random$withinExon <-combined_PleiSNPs_Random$withinExon*43130/10003
+  combined_PleiSNPs_Random$RandomHD <-na.omit(vecRandom)
+  combined_PleiSNPs_Random$Regulatory <-na.omit(vecRegu)
+  
+  return(combined_PleiSNPs_Random)
+}
+
+listRandomCombined <-list()
+
+for (i in 1:100){
+  t <-randomFunc(PleiAllDat_qqman,PleiAll_100kbWindow,PleiAll_withinGenes,PleiAllDat_random5kb,PleiAllDat_withinExons,PleiAllDat_ReguSNP)
+  listRandomCombined[[i]] <- t
+}
+
+library(plyr)
+dfmerged <-ldply(listRandomCombined, data.frame)
+mergedPCT <-data.frame()
+for (i in 3:20){
+  temp <-dfmerged[dfmerged$logP==as.character(i),]
+  tempPCT <-apply(temp, 2,function(x) quantile(x,c(0.05,0.95)))
+  mergedPCT <-rbind(mergedPCT, tempPCT)
+}
+
+mergedPCT95 <-mergedPCT[grep('95', row.names(mergedPCT)),]
+mergedPCT05 <-mergedPCT[-grep('95', row.names(mergedPCT)),]
+
+#quick sanity check
+head(mergedPCT95);tail(mergedPCT95);colnames(mergedPCT95); dim(mergedPCT95)
+
+#plot figures 
+
+library(reshape)
+library(ggplot2)
+
+combined_PleiSNPs_withRandom <-mergedPCT95[,c(1,2,4,3,5,6,7)]
+colnames(combined_PleiSNPs_withRandom) <-c("logP", "AllHDchip", "100kbUpstream", "5kbUpstream", "Genes", "Exons","HPRS-Regions")
+combined_PleiSNPs_withRandom$logP <-as.character(combined_PleiSNPs_withRandom$logP)
+combined_PleiSNPs_w5kbmelt <-melt(combined_PleiSNPs_withRandom, vars.id="logP")
+combined_PleiSNPs_w5kbmelt$logP <-as.numeric(as.vector(combined_PleiSNPs_w5kbmelt$logP))
+head(combined_PleiSNPs_w5kbmelt)
+
+setwd('//pearceyflush1.csiro.au/flush1/ngu121/PleiotropicSNPs')
+pdf("Enrichment_pleiotropicSNPs_100iterations95percentile_20170128.pdf", width=8,height=7)
+mypalete <- c('#7fc97f','#beaed4','#fdc086','#ffff99','#386cb0','#f0027f','#bf5b17')
+
+
+p<- ggplot(combined_PleiSNPs_w5kbmelt, aes(logP, value, fill=variable))+ theme_bw() + geom_bar(stat="identity",position="dodge")+ theme(axis.text.x=element_text(size=18))+theme(axis.text.y=element_text(size=18)) + theme(axis.title=element_text(size=18))+ xlab("-logP") +ylab("SNP count") +scale_x_continuous(breaks = seq(from=3,to= 20,by=1))
+p<-p +  theme(panel.grid.major = element_blank(),panel.grid.minor = element_blank())
+p <- p + theme(legend.text=element_text(size=12)) +theme(legend.position=c(.85,.85))
+p <- p+theme(legend.title=element_blank()) +  scale_fill_manual(values=mypalete)
+p
+
+dev.off()
+
+```
+#2. Figure for Enrichment levels of regulatory SNPs (100 Iterations)
+```{r}
+#quick view summary data
+head(combined_PleiSNPs_withRandom)
+
+combined_PleiSNPs_withRandom$FE_HDchip <-combined_PleiSNPs_withRandom$`43k_Regulatory`/combined_PleiSNPs_withRandom$rd43k_HDchip
+
+combined_PleiSNPs_withRandom$FE_100kb <-combined_PleiSNPs_withRandom$`43k_Regulatory`/combined_PleiSNPs_withRandom$rd43k_100kbUpstream
+
+combined_PleiSNPs_withRandom$FE_5kb <-combined_PleiSNPs_withRandom$`43k_Regulatory`/combined_PleiSNPs_withRandom$`5kbUpstream`
+
+combined_PleiSNPs_withRandom$FE_InGenes <-combined_PleiSNPs_withRandom$`43k_Regulatory`/combined_PleiSNPs_withRandom$rd43k_InGenes
+
+combined_PleiSNPs_withRandom$FE_InExons <-combined_PleiSNPs_withRandom$`43k_Regulatory`/combined_PleiSNPs_withRandom$InExons
+
+head(combined_PleiSNPs_withRandom)
+combined_PleiSNPs_FoldChange <-combined_PleiSNPs_withRandom[,c(1,8,9,10,11,12)]
+
+combined_PleiSNPs_FoldChange$logP <-as.character(as.vector(combined_PleiSNPs_FoldChange$logP))
+
+combined_PleiSNPs_FoldChange_melt <-melt(combined_PleiSNPs_FoldChange, vars.id="logP")
+head(combined_PleiSNPs_FoldChange_melt)
+combined_PleiSNPs_FoldChange_melt$logP <-as.numeric(as.vector(combined_PleiSNPs_FoldChange_melt$logP))
+
+#pdf("Enrichment_pleiotropicSNPs_FOLDCHANGE_100random_95_percentile.pdf", width=7,height=5)
+
+ggplot(combined_PleiSNPs_FoldChange_melt, aes(logP, value, fill=variable))+ geom_bar(stat="identity",position="dodge")+ theme_bw()+ theme(axis.text.x=element_text(size=18))+theme(axis.text.y=element_text(size=18)) + theme(axis.title=element_text(size=18))+ xlab("-logP") +ylab("Fold enrichment")+scale_x_continuous(breaks = seq(from=3,to= 20,by=1))+theme(legend.position=c(.15,.75))+theme(legend.text=element_text(size=18)) +theme(legend.title=element_blank())
+
+#dev.off()
+```
+

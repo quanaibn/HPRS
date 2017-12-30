@@ -12,12 +12,12 @@ The HPRS pipeline has three main steps, which are arranged in this site into thr
 Figure 1. HPRS streamlined workflow for the prediction of regulatory regions. Key steps include mapping human regulatory regions to a target genome (creating a universal dataset), filtering the mapped regions by seven epigenomic, transcriptomic and genomic criteria to keep only regions with potential regulatory functions, validating the predicted regions by comparing with known reference dataset, and translating the findings to potential applications in genomic technology.
 
 
-#### For more information, please refer to our preprint bioRxiv article (The article has been accepted for publication at *GigaScience*):
+#### For more information, please refer to our preprint *bioRxiv* article (The article has been accepted for publication at *GigaScience*):
 
 Nguyen, Q.H., Tellam, R.L., Naval-Sanchez, M., Porto-Neto, L., Barendse, W., Reverter, A., Hayes, B., Kijas, J., and Dalrymple, B.P. (2017). Mammalian genomic regulatory regions predicted by utilizing human genomics, transcriptomics and epigenetics data. *bioRxiv* 143990; doi: https://doi.org/10.1101/143990
 
 #### Data and code are also available at *GigaScience Database*:
 
-Nguyen, Q, H; Tellam, R, L; Naval-Sanchez, M; Porto-Neto, L, R; Barendse, W; Reverter, A; Hayes, B; Kijas, J; Dalrymple, B, P (2017): Supporting data for "Mammalian genomic regulatory regions predicted by utilizing human genomics, transcriptomics and epigenetics data" GigaScience Database.http://dx.doi.org/10.5524/100390
+Nguyen, Q, H; Tellam, R, L; Naval-Sanchez, M; Porto-Neto, L, R; Barendse, W; Reverter, A; Hayes, B; Kijas, J; Dalrymple, B, P (2017): Supporting data for "Mammalian genomic regulatory regions predicted by utilizing human genomics, transcriptomics and epigenetics data" *GigaScience Database*.http://dx.doi.org/10.5524/100390
 
 

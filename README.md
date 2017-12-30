@@ -6,7 +6,7 @@ The pipeline has been developed and tested by Dr. Quan Nguyen, Prof. Brian Dalry
 The HPRS pipeline has three main steps, which are arranged in this site into three  main folders (in sequential order of the pipeline):  start with programs in the Map folder, then in Filter folder, and then in RegulatorySNP folder. Each of these folders contains all Python/R/Shell scripts needed for running the programs. One additional Data folder contains data for testing, and a table with information on URLs to download publically available data for use in the pipeline. The Utilities directory contain optional, common commands, convenient to run the pipeline. Each folder also contains step-by-step instructions. Figure 1 below describes the workflow.
 
 <p align="center">
-<img width="450"  src="./Fig1_HiRes.tif"> <br>
+<img width="450"  src="./Fig1_HiRes.png"> <br>
 </p>
 
 Figure 1. HPRS streamlined workflow for the prediction of regulatory regions. Key steps include mapping human regulatory regions to a target genome (creating a universal dataset), filtering the mapped regions by seven epigenomic, transcriptomic and genomic criteria to keep only regions with potential regulatory functions, validating the predicted regions by comparing with known reference dataset, and translating the findings to potential applications in genomic technology.
